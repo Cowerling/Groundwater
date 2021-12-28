@@ -3,8 +3,8 @@ import csv
 import datetime
 
 
-root_dir = r'C:\Users\Cowerling\Desktop\__利辛视频__'
-file_name = 'ST_SOIL_R_202112281645.csv'
+root_dir = r'data/丫角视频'
+file_name = 'ST_SOIL_R_202112282354.csv'
 output_file_name = file_name.replace('.csv', '_if.csv')
 file_path = os.path.join(root_dir, file_name)
 output_file_path = os.path.join(root_dir, output_file_name)
