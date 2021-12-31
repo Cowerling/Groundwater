@@ -5,8 +5,8 @@ from sklearn.preprocessing import PolynomialFeatures
 import numpy as np
 import copy
 
-root_dir = r'data/利辛视频'
-file_name = 'ST_SOIL_R_40_202112281645_if.csv'
+root_dir = r'data/丫角视频'
+file_name = 'ST_PPTN_R_202112282353_if.csv'
 output_file_name = file_name.replace('.csv', '_mf.csv')
 file_path = os.path.join(root_dir, file_name)
 output_file_path = os.path.join(root_dir, output_file_name)
@@ -16,6 +16,8 @@ skip = 0
 p = 2
 column = 3
 max_value = 100
+use_regressor = True
+no_value = 0
 
 if 'ST_SOIL_R_10' in file_name:
     column = 5
@@ -23,6 +25,10 @@ elif 'ST_SOIL_R_20' in file_name:
     column = 6
 elif 'ST_SOIL_R_40' in file_name:
     column = 8
+elif 'ST_PPTN_R' in file_name:
+    column = 2
+    use_regressor = False
+    no_value = -1
 
 with open(file_path, 'r', encoding='utf-8') as file:
     reader = csv.reader(file)
@@ -33,58 +39,59 @@ with open(file_path, 'r', encoding='utf-8') as file:
     n_rows = copy.deepcopy(rows)
     fix_count = 0
 
-    for index, row in enumerate(rows):
-        if index < skip:
-            continue
+    if use_regressor:
+        for index, row in enumerate(rows):
+            if index < skip:
+                continue
 
-        if row[column] == '' or float(row[column]) == 0:
-            pre_index = index - step
-            if pre_index < 0:
-                pre_index = 0
+            if row[column] == '' or float(row[column]) == no_value:
+                pre_index = index - step
+                if pre_index < 0:
+                    pre_index = 0
 
-            next_index = index + step
-            if next_index >= len(rows):
-                next_index = len(rows) - 1
+                next_index = index + step
+                if next_index >= len(rows):
+                    next_index = len(rows) - 1
 
-            sub_rows = rows[pre_index: next_index + 1]
-            x = []
-            y = []
+                sub_rows = rows[pre_index: next_index + 1]
+                x = []
+                y = []
 
-            for sub_index, sub_row in enumerate(sub_rows):
-                if sub_row[column] != '' and float(sub_row[column]) != 0:
-                    x.append(sub_index)
-                    y.append(sub_row[column])
+                for sub_index, sub_row in enumerate(sub_rows):
+                    if sub_row[column] != '' and float(sub_row[column]) != no_value:
+                        x.append(sub_index)
+                        y.append(sub_row[column])
 
-            if len(x) > 1:
-                x = np.expand_dims(np.array(x), axis=1)
-                y = np.expand_dims(np.array(y), axis=1)
-                predict_x = [[index - pre_index]]
+                if len(x) > 1:
+                    x = np.expand_dims(np.array(x), axis=1)
+                    y = np.expand_dims(np.array(y), axis=1)
+                    predict_x = [[index - pre_index]]
 
-                if x.shape[0] <= step:
-                    regressor = LinearRegression()
-                    regressor.fit(x, y)
+                    if x.shape[0] <= step:
+                        regressor = LinearRegression()
+                        regressor.fit(x, y)
 
-                    predict_value = regressor.predict(predict_x)[0][0]
-                    n_rows[index][column] = round(predict_value, 3)
-                else:
-                    poly = PolynomialFeatures(degree=p)
-                    x_poly = poly.fit_transform(x)
-                    regressor_poly = LinearRegression()
-                    regressor_poly.fit(x_poly, y)
+                        predict_value = regressor.predict(predict_x)[0][0]
+                        n_rows[index][column] = round(predict_value, 3)
+                    else:
+                        poly = PolynomialFeatures(degree=p)
+                        x_poly = poly.fit_transform(x)
+                        regressor_poly = LinearRegression()
+                        regressor_poly.fit(x_poly, y)
 
-                    predict_value = regressor_poly.predict(poly.transform(predict_x))[0][0]
-                    n_rows[index][column] = round(predict_value, 3)
+                        predict_value = regressor_poly.predict(poly.transform(predict_x))[0][0]
+                        n_rows[index][column] = round(predict_value, 3)
 
-                fix_count += 1
+                    fix_count += 1
 
     for n_index, n_row in enumerate(n_rows):
-        if n_row[column] == '' or float(n_row[column]) == 0:
+        if n_row[column] == '' or float(n_row[column]) == no_value:
             pre_n_index = n_index - 1
-            while pre_n_index >= 0 and (n_rows[pre_n_index][column] == '' or float(n_rows[pre_n_index][column]) == 0):
+            while pre_n_index >= 0 and (n_rows[pre_n_index][column] == '' or float(n_rows[pre_n_index][column]) == no_value):
                 pre_n_index -= 1
 
             next_n_index = n_index + 1
-            while next_n_index < len(n_rows) and (n_rows[next_n_index][column] == '' or float(n_rows[next_n_index][column]) == 0):
+            while next_n_index < len(n_rows) and (n_rows[next_n_index][column] == '' or float(n_rows[next_n_index][column]) == no_value):
                 next_n_index += 1
 
             if pre_n_index >= 0 and n_index - pre_n_index <= step * 2 and next_n_index < len(n_rows) and next_n_index - n_index <= step * 2:
@@ -108,7 +115,7 @@ with open(file_path, 'r', encoding='utf-8') as file:
         writer.writerow(head)
 
         for n_row in n_rows:
-            if n_row[column] != '' and float(n_row[column]) == 0:
+            if n_row[column] != '' and float(n_row[column]) == no_value:
                 n_row[column] = ''
 
             if n_row[column] != '' and float(n_row[column]) > max_value:
